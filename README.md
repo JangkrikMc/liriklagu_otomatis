@@ -1,134 +1,101 @@
-# 🎵 Automatic Lyrics Generator
+# Automatic Lyrics Generator
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
-![Status](https://img.shields.io/badge/Status-Active-brightgreen)
+Generate and display lyrics from audio files in real-time with cool ASCII art visualization!
 
-A beautiful and user-friendly application that automatically generates and displays lyrics from audio files in real-time. This tool uses OpenAI's Whisper model to transcribe audio and display synchronized lyrics as the music plays.
+## Features
 
-![Demo Screenshot](https://via.placeholder.com/800x400?text=Automatic+Lyrics+Generator)
+- Convert audio files to text with timestamps
+- Play audio with synchronized lyrics display
+- Support for various audio formats
+- Save lyrics to JSON format
+- Cool ASCII art lyrics display
+- Works even without all dependencies installed!
 
-## ✨ Features
+## Quick Start
 
-- **Rich Interactive Interface**: Beautiful terminal UI with menus, progress bars, and colorful text
-- **Audio File Selection**: Choose from available audio files or provide custom paths
-- **Automatic Transcription**: Convert speech/singing to text with precise timestamps
-- **Real-time Lyrics Display**: See lyrics synchronized with the audio playback
-- **Multiple Audio Format Support**: Works with MP3, WAV, and other common formats
-- **No Coding Required**: Fully menu-driven interface, no technical knowledge needed
-
-## 📋 Requirements
-
-- Python 3.8 or higher
-- ffmpeg (for audio processing)
-- Internet connection (for initial model download)
-
-## 🚀 Installation
-
-### Automatic Installation
+### Installation
 
 1. Clone this repository:
-```bash
-git clone https://github.com/JangkrikMc/liriklagu_otomatis.git
-cd liriklagu_otomatis
-```
+   ```bash
+   git clone https://github.com/JangkrikMc/liriklagu_otomatis.git
+   cd liriklagu_otomatis
+   ```
 
 2. Run the installation script:
-```bash
-chmod +x install.sh
-./install.sh
-```
+   ```bash
+   ./install.sh
+   ```
 
-3. Activate the virtual environment:
-```bash
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+3. If the installation script doesn't work, you can run the application directly:
+   ```bash
+   # From the repository root directory
+   ./bin/liriklagu
+   
+   # Or using Python directly
+   python3 src/main.py
+   ```
 
-### Manual Installation
+### Usage
 
-If the automatic installation doesn't work, you can install manually:
-
-1. Install ffmpeg:
-   - Ubuntu/Debian: `sudo apt-get install ffmpeg`
-   - MacOS: `brew install ffmpeg`
-   - Windows: Download from [ffmpeg.org](https://ffmpeg.org/download.html)
-
-2. Create a virtual environment:
-```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install required packages:
-```bash
-pip install -r requirements.txt
-```
-
-## 🎮 Usage
-
-1. Activate the virtual environment (if not already activated):
-```bash
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
+1. Add audio files to the `audio` directory
 2. Run the application:
+   ```bash
+   liriklagu
+   ```
+   
+3. Select an audio file from the menu
+4. Choose to convert the audio to lyrics or play with lyrics
+
+## Command Line Options
+
+```
+usage: main.py [-h] [-f FILE] [-t] [-p] [-l] [-d DIRECTORY] [--no-audio]
+
+Automatic Lyrics Generator
+
+options:
+  -h, --help            show this help message and exit
+  -f FILE, --file FILE  Audio file to process
+  -t, --transcribe      Transcribe the audio file
+  -p, --play            Play audio with lyrics
+  -l, --list            List available audio files
+  -d, --directory, --directory DIRECTORY
+                        Base directory for the application
+  --no-audio            Run in lyrics-only mode without audio playback
+```
+
+## Troubleshooting
+
+### The application says "Whisper is not installed"
+
+The application will still work without Whisper, but with limited functionality. It will use a demo mode for lyrics generation.
+
+### Audio playback doesn't work
+
+The application will run in lyrics-only mode if audio playback libraries are not available. You can still see the lyrics display.
+
+### The `liriklagu` command is not found
+
+You can run the application directly using:
 ```bash
-python src/main.py
+./bin/liriklagu
+```
+or
+```bash
+python3 src/main.py
 ```
 
-3. Follow the on-screen menu to:
-   - Select an audio file
-   - Generate lyrics
-   - Play audio with synchronized lyrics
+## Dependencies
 
-## 📁 Project Structure
+The application will try to work with whatever dependencies are available, but for full functionality, it needs:
 
-```
-liriklagu_otomatis/
-├── audio/              # Directory for audio files
-├── output/             # Generated lyrics files (JSON)
-├── src/                # Source code
-│   ├── main.py         # Main application script
-│   └── test.py         # Test script
-├── temp/               # Temporary files
-├── install.sh          # Installation script
-├── requirements.txt    # Python dependencies
-└── README.md           # This file
-```
+- Python 3.6+
+- FFmpeg
+- Rich (for UI)
+- Whisper (for transcription)
+- Playsound (for audio playback)
+- PyDub (for audio processing)
 
-## 🎵 Adding Your Own Audio Files
-
-To use your own audio files:
-
-1. Place your audio files in the `audio/` directory
-2. Run the application and select your file from the menu
-3. Generate lyrics and enjoy!
-
-Supported formats: MP3, WAV, OGG, FLAC, M4A
-
-## 🔧 How It Works
-
-1. **Audio Processing**: The application converts your audio to the format required by the Whisper model
-2. **Transcription**: OpenAI's Whisper model transcribes the audio with word-level timestamps
-3. **Synchronization**: The application plays the audio while displaying lyrics in real-time
-4. **Storage**: Lyrics are saved in JSON format for future use
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🙏 Acknowledgements
-
-- [OpenAI Whisper](https://github.com/openai/whisper) for the speech recognition model
-- [Rich](https://github.com/Textualize/rich) for the beautiful terminal interface
-- [ffmpeg](https://ffmpeg.org/) for audio processing capabilities

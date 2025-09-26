@@ -1,0 +1,19 @@
+#!/bin/bash
+# Wrapper script for liriklagu
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PARENT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Try to activate virtual environment if it exists
+if [ -f "$PARENT_DIR/venv/bin/activate" ]; then
+    source "$PARENT_DIR/venv/bin/activate"
+fi
+
+# Run the main script with either python or python3
+if command -v python3 &>/dev/null; then
+    python3 "$PARENT_DIR/src/main.py" "$@"
+elif command -v python &>/dev/null; then
+    python "$PARENT_DIR/src/main.py" "$@"
+else
+    echo "Error: Python is not installed. Please install Python to use this application."
+    exit 1
+fi

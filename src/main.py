@@ -14,19 +14,68 @@ import argparse
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 
+# Flag to track if modules are available
+WHISPER_AVAILABLE = False
+FFMPEG_AVAILABLE = False
+RICH_AVAILABLE = False
+PLAYSOUND_AVAILABLE = False
+PYDUB_AVAILABLE = False
+
 # Try to import required packages with fallbacks
 try:
     import whisper
+    WHISPER_AVAILABLE = True
 except ImportError:
-    print("Whisper is not installed. Please run the install.sh script first.")
-    sys.exit(1)
+    print("Whisper is not installed. Some features will be limited.")
+    # Create a mock whisper module for basic functionality
+    class MockWhisper:
+        @staticmethod
+        def load_model(name):
+            return MockWhisperModel()
+    
+    class MockWhisperModel:
+        def transcribe(self, audio_path, **kwargs):
+            print(f"[Mock] Would transcribe {audio_path}")
+            return {"segments": []}
+    
+    whisper = MockWhisper()
 
 try:
     import ffmpeg
+    FFMPEG_AVAILABLE = True
 except ImportError:
-    print("ffmpeg-python is not installed. Please run the install.sh script first.")
-    sys.exit(1)
+    print("ffmpeg-python is not installed. Some features will be limited.")
+    # Create a mock ffmpeg module for basic functionality
+    class MockFFmpeg:
+        @staticmethod
+        def input(file):
+            return MockFFmpegInput(file)
+    
+    class MockFFmpegInput:
+        def __init__(self, file):
+            self.file = file
+        
+        def output(self, output_path, **kwargs):
+            return MockFFmpegOutput(self.file, output_path)
+    
+    class MockFFmpegOutput:
+        def __init__(self, input_file, output_path):
+            self.input_file = input_file
+            self.output_path = output_path
+        
+        def run(self, **kwargs):
+            print(f"[Mock] Would convert {self.input_file} to {self.output_path}")
+            # Try to copy the file as a fallback
+            try:
+                import shutil
+                shutil.copy(self.input_file, self.output_path)
+                print(f"[Mock] Copied file instead of converting")
+            except Exception as e:
+                print(f"[Mock] Failed to copy file: {e}")
+    
+    ffmpeg = MockFFmpeg()
 
+# Try to import rich or create simple fallbacks
 try:
     from rich.console import Console
     from rich.panel import Panel
@@ -38,13 +87,133 @@ try:
     from rich.live import Live
     from rich.align import Align
     from rich.box import Box
+    RICH_AVAILABLE = True
 except ImportError:
-    print("Rich is not installed. Please run the install.sh script first.")
-    sys.exit(1)
+    print("Rich is not installed. Using simple text interface.")
+    
+    # Create simple fallbacks for rich components
+    class SimpleConsole:
+        def print(self, *args, **kwargs):
+            # Strip rich formatting
+            text = str(args[0])
+            for tag in ['[bold]', '[/bold]', '[italic]', '[/italic]', '[green]', '[/green]', 
+                       '[blue]', '[/blue]', '[red]', '[/red]', '[yellow]', '[/yellow]',
+                       '[cyan]', '[/cyan]', '[magenta]', '[/magenta]', '[white]', '[/white]']:
+                text = text.replace(tag, '')
+            print(text)
+        
+        def status(self, text):
+            class MockStatus:
+                def __enter__(self):
+                    print(text)
+                    return self
+                
+                def __exit__(self, *args):
+                    pass
+                
+                def update(self, new_text):
+                    print(new_text)
+            
+            return MockStatus()
+        
+        def print_exception(self):
+            import traceback
+            traceback.print_exc()
+    
+    class SimplePanel:
+        @staticmethod
+        def fit(text, **kwargs):
+            return text
+    
+    class SimplePrompt:
+        @staticmethod
+        def ask(text, choices=None):
+            print(text)
+            if choices:
+                print(f"Options: {', '.join(choices)}")
+            return input("> ")
+    
+    class SimpleConfirm:
+        @staticmethod
+        def ask(text):
+            response = input(f"{text} (y/n): ")
+            return response.lower() in ['y', 'yes']
+    
+    class SimpleTable:
+        def __init__(self, title=None, **kwargs):
+            self.title = title
+            self.columns = []
+            self.rows = []
+            if title:
+                print(f"\n--- {title} ---")
+        
+        def add_column(self, header, **kwargs):
+            self.columns.append(header)
+        
+        def add_row(self, *args):
+            self.rows.append(args)
+            print(" | ".join([str(arg) for arg in args]))
+    
+    class SimpleText:
+        def __init__(self):
+            self.content = ""
+            self.plain = ""
+        
+        def append(self, text, **kwargs):
+            self.content += text
+            self.plain += text
+            print(text, end="")
+    
+    class SimpleLayout:
+        def __init__(self):
+            self.sections = {}
+        
+        def split(self, *args):
+            for arg in args:
+                self.sections[arg.name] = arg
+        
+        def __getitem__(self, key):
+            return self.sections.get(key, SimpleLayoutSection())
+    
+    class SimpleLayoutSection:
+        def update(self, content):
+            if hasattr(content, 'title'):
+                print(f"\n--- {content.title} ---")
+            print(content)
+    
+    class SimpleLive:
+        def __init__(self, content, **kwargs):
+            self.content = content
+        
+        def __enter__(self):
+            return self
+        
+        def __exit__(self, *args):
+            pass
+    
+    class SimpleAlign:
+        @staticmethod
+        def center(text):
+            return text
+    
+    # Assign the simple classes to the expected names
+    Console = SimpleConsole
+    Panel = SimplePanel
+    Prompt = SimplePrompt
+    Confirm = SimpleConfirm
+    Table = SimpleTable
+    Text = SimpleText
+    Layout = SimpleLayout
+    Live = SimpleLive
+    Align = SimpleAlign
+    Box = type('SimpleBox', (), {})
+    Progress = type('SimpleProgress', (), {})
+    SpinnerColumn = type('SimpleSpinnerColumn', (), {})
+    TextColumn = type('SimpleTextColumn', (), {})
+    BarColumn = type('SimpleBarColumn', (), {})
+    TimeElapsedColumn = type('SimpleTimeElapsedColumn', (), {})
 
-# Flag to track if playsound is available
-PLAYSOUND_AVAILABLE = False
-
+# Try to import playsound or create a fallback
 try:
     from playsound import playsound
     PLAYSOUND_AVAILABLE = True
@@ -63,11 +232,19 @@ except ImportError:
 
 try:
     from pydub import AudioSegment
+    PYDUB_AVAILABLE = True
 except ImportError:
-    print("Pydub is not installed. Please run the install.sh script first.")
-    sys.exit(1)
+    print("Pydub is not installed. Some features will be limited.")
+    # Create a mock AudioSegment
+    class MockAudioSegment:
+        pass
+    
+    class MockPydub:
+        AudioSegment = MockAudioSegment
+    
+    pydub = MockPydub()
 
-# Initialize Rich console
+# Initialize console
 console = Console()
 
 # ASCII Art generator function
@@ -207,6 +384,18 @@ class LyricGenerator:
             padding=(1, 10)
         ))
         
+        # Display module availability status
+        console.print("\n[bold]Module Status:[/bold]")
+        status_table = Table(show_header=False, box=None)
+        status_table.add_column(style="yellow")
+        status_table.add_column(style="green")
+        status_table.add_row("Whisper:", "Available ✓" if WHISPER_AVAILABLE else "Not Available ✗")
+        status_table.add_row("FFmpeg:", "Available ✓" if FFMPEG_AVAILABLE else "Not Available ✗")
+        status_table.add_row("Rich UI:", "Available ✓" if RICH_AVAILABLE else "Not Available ✗")
+        status_table.add_row("Audio Playback:", "Available ✓" if PLAYSOUND_AVAILABLE else "Not Available ✗")
+        status_table.add_row("PyDub:", "Available ✓" if PYDUB_AVAILABLE else "Not Available ✗")
+        console.print(status_table)
+        
         console.print("\n[bold]Features:[/bold]")
         features = Table(show_header=False, box=None)
         features.add_column(style="green")
@@ -312,17 +501,35 @@ class LyricGenerator:
         
         with console.status("[bold green]Converting audio to WAV format..."):
             try:
-                # Use ffmpeg to convert to WAV with proper settings for Whisper
-                ffmpeg.input(audio_path).output(
-                    output_path, 
-                    acodec='pcm_s16le',
-                    ac=1,  # mono
-                    ar=16000  # 16kHz sample rate
-                ).run(quiet=True, overwrite_output=True)
+                if FFMPEG_AVAILABLE:
+                    # Use ffmpeg to convert to WAV with proper settings for Whisper
+                    ffmpeg.input(audio_path).output(
+                        output_path, 
+                        acodec='pcm_s16le',
+                        ac=1,  # mono
+                        ar=16000  # 16kHz sample rate
+                    ).run(quiet=True, overwrite_output=True)
+                else:
+                    # Try using subprocess to call ffmpeg directly
+                    try:
+                        subprocess.run([
+                            "ffmpeg", "-i", audio_path, 
+                            "-acodec", "pcm_s16le", 
+                            "-ac", "1", 
+                            "-ar", "16000", 
+                            "-y", output_path
+                        ], check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    except subprocess.CalledProcessError:
+                        # If ffmpeg fails, just copy the file as a fallback
+                        import shutil
+                        shutil.copy(audio_path, output_path)
+                        console.print("[yellow]Warning: Using original audio file without conversion[/yellow]")
+                
                 return output_path
             except Exception as e:
                 console.print(f"[bold red]Error converting audio:[/bold red] {str(e)}")
-                return None
+                # As a last resort, just return the original file
+                return audio_path
     
     def transcribe_audio(self, audio_path=None) -> None:
         """Transcribe audio file to generate lyrics with timestamps."""
@@ -342,6 +549,49 @@ class LyricGenerator:
         base_filename = os.path.basename(self.audio_path).rsplit('.', 1)[0]
         output_json_path = self.output_dir / f"{base_filename}_lyrics.json"
         
+        # Check if Whisper is available
+        if not WHISPER_AVAILABLE:
+            console.print("[yellow]Whisper is not available. Creating dummy lyrics for demonstration.[/yellow]")
+            
+            # Create dummy lyrics
+            dummy_lyrics = [
+                {"word": "Welcome", "start": 0.0, "end": 1.0},
+                {"word": "to", "start": 1.0, "end": 1.5},
+                {"word": "Automatic", "start": 1.5, "end": 2.5},
+                {"word": "Lyrics", "start": 2.5, "end": 3.5},
+                {"word": "Generator", "start": 3.5, "end": 4.5},
+                {"word": "This", "start": 5.0, "end": 5.5},
+                {"word": "is", "start": 5.5, "end": 6.0},
+                {"word": "a", "start": 6.0, "end": 6.5},
+                {"word": "demo", "start": 6.5, "end": 7.0},
+                {"word": "mode", "start": 7.0, "end": 7.5},
+                {"word": "without", "start": 8.0, "end": 8.5},
+                {"word": "Whisper", "start": 8.5, "end": 9.0},
+                {"word": "installed", "start": 9.0, "end": 9.5},
+            ]
+            
+            # Process results and convert to ASCII art
+            output = []
+            for item in dummy_lyrics:
+                # Generate ASCII art for each word
+                ascii_art = generate_ascii_art(item["word"].strip())
+                ascii_text = "\n".join(ascii_art)
+                
+                output.append({
+                    "word": item["word"].strip(),
+                    "ascii_art": ascii_text,
+                    "start": item["start"],
+                    "end": item["end"]
+                })
+            
+            # Save to JSON
+            with open(output_json_path, "w", encoding="utf-8") as f:
+                json.dump(output, f, indent=2, ensure_ascii=False)
+            
+            self.lyrics = output
+            console.print(f"[bold green]Demo lyrics created![/bold green] Saved to {output_json_path}")
+            return output_json_path
+        
         # Load Whisper model
         with console.status("[bold green]Loading Whisper model...") as status:
             try:
@@ -354,7 +604,7 @@ class LyricGenerator:
                 # Process results and convert to ASCII art
                 output = []
                 for segment in result["segments"]:
-                    for word in segment["words"]:
+                    for word in segment.get("words", []):
                         # Generate ASCII art for each word
                         ascii_art = generate_ascii_art(word["word"].strip())
                         ascii_text = "\n".join(ascii_art)
@@ -439,15 +689,26 @@ class LyricGenerator:
             else:
                 # Simulate audio playback duration if playsound is not available
                 try:
-                    # Get audio duration using ffmpeg
-                    probe = ffmpeg.probe(wav_path)
-                    duration = float(probe['format']['duration'])
-                    console.print("[yellow]Audio playback not available. Simulating playback...[/yellow]")
-                    time.sleep(duration)
-                except Exception as e:
-                    console.print(f"[bold red]Error simulating audio playback:[/bold red] {str(e)}")
-                    # Default sleep if we can't determine duration
-                    time.sleep(60)
+                    # Try to get audio duration using ffmpeg
+                    try:
+                        if FFMPEG_AVAILABLE:
+                            probe = ffmpeg.probe(wav_path)
+                            duration = float(probe['format']['duration'])
+                        else:
+                            # Estimate duration based on lyrics end time
+                            if lyrics and len(lyrics) > 0:
+                                duration = max(item["end"] for item in lyrics) + 2.0
+                            else:
+                                duration = 30.0  # Default duration
+                        
+                        console.print("[yellow]Audio playback not available. Simulating playback...[/yellow]")
+                        time.sleep(duration)
+                    except Exception as e:
+                        console.print(f"[bold red]Error simulating audio playback:[/bold red] {str(e)}")
+                        # Default sleep if we can't determine duration
+                        time.sleep(30)
+                except KeyboardInterrupt:
+                    console.print("[yellow]Playback stopped by user.[/yellow]")
         
         # Function to display lyrics with ASCII art
         def display_lyrics():
@@ -457,33 +718,36 @@ class LyricGenerator:
             buffer_words = []
             last_update_time = 0
             
-            while current_index < len(lyrics):
-                now = time.time()
-                elapsed = now - start_time
-                
-                # Display words that should be shown by now
-                while current_index < len(lyrics) and lyrics[current_index]["start"] <= elapsed:
-                    word = lyrics[current_index]["word"]
-                    ascii_art = lyrics[current_index].get("ascii_art", "")
+            try:
+                while current_index < len(lyrics):
+                    now = time.time()
+                    elapsed = now - start_time
                     
-                    # If ASCII art is not in the JSON, generate it now
-                    if not ascii_art:
-                        ascii_lines = generate_ascii_art(word)
-                        ascii_art = "\n".join(ascii_lines)
+                    # Display words that should be shown by now
+                    while current_index < len(lyrics) and lyrics[current_index]["start"] <= elapsed:
+                        word = lyrics[current_index]["word"]
+                        ascii_art = lyrics[current_index].get("ascii_art", "")
+                        
+                        # If ASCII art is not in the JSON, generate it now
+                        if not ascii_art:
+                            ascii_lines = generate_ascii_art(word)
+                            ascii_art = "\n".join(ascii_lines)
+                        
+                        # Clear previous content
+                        lyrics_text.plain = ""
+                        
+                        # Display the ASCII art
+                        lyrics_text.append(ascii_art + "\n", style="bold cyan")
+                        
+                        # Add the plain text version below
+                        lyrics_text.append("\n" + word + "\n", style="bold green")
+                        
+                        current_index += 1
+                        time.sleep(0.1)  # Small pause between words
                     
-                    # Clear previous content
-                    lyrics_text.plain = ""
-                    
-                    # Display the ASCII art
-                    lyrics_text.append(ascii_art + "\n", style="bold cyan")
-                    
-                    # Add the plain text version below
-                    lyrics_text.append("\n" + word + "\n", style="bold green")
-                    
-                    current_index += 1
-                    time.sleep(0.1)  # Small pause between words
-                
-                time.sleep(0.05)  # Small sleep to prevent CPU hogging
+                    time.sleep(0.05)  # Small sleep to prevent CPU hogging
+            except KeyboardInterrupt:
+                console.print("[yellow]Lyrics display stopped by user.[/yellow]")
         
         # Start threads
         music_thread = threading.Thread(target=play_music)
@@ -559,7 +823,7 @@ def main():
     global PLAYSOUND_AVAILABLE
     if args.no_audio:
         PLAYSOUND_AVAILABLE = False
-        console.print("[yellow]Running in lyrics-only mode (--no-audio flag set)[/yellow]")
+        print("[yellow]Running in lyrics-only mode (--no-audio flag set)[/yellow]")
     
     # Initialize the application
     app = LyricGenerator(args.directory)
@@ -596,7 +860,8 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        console.print("\n[bold yellow]Program terminated by user.[/bold yellow]")
+        print("\n[bold yellow]Program terminated by user.[/bold yellow]")
     except Exception as e:
-        console.print(f"\n[bold red]An error occurred:[/bold red] {str(e)}")
-        console.print_exception()
+        print(f"\n[bold red]An error occurred:[/bold red] {str(e)}")
+        import traceback
+        traceback.print_exc()
