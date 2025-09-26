@@ -36,20 +36,30 @@ try:
     from rich.text import Text
     from rich.layout import Layout
     from rich.live import Live
+    from rich.align import Align
+    from rich.box import Box
 except ImportError:
     print("Rich is not installed. Please run the install.sh script first.")
     sys.exit(1)
 
+# Flag to track if playsound is available
+PLAYSOUND_AVAILABLE = False
+
 try:
     from playsound import playsound
+    PLAYSOUND_AVAILABLE = True
 except ImportError:
     try:
         # Try to use our fallback module
         from fallback import playsound
         print("Using fallback playsound module with ffplay")
+        PLAYSOUND_AVAILABLE = True
     except ImportError:
-        print("Audio playback libraries are not installed. Please run the install.sh script first.")
-        sys.exit(1)
+        print("Audio playback libraries are not installed. Running in lyrics-only mode.")
+        # Define a dummy playsound function that does nothing
+        def playsound(sound_file, block=True):
+            print(f"[Audio playback disabled] Would play: {sound_file}")
+            return True
 
 try:
     from pydub import AudioSegment
@@ -59,6 +69,97 @@ except ImportError:
 
 # Initialize Rich console
 console = Console()
+
+# ASCII Art generator function
+def generate_ascii_art(text, style="standard"):
+    """Generate ASCII art text for display"""
+    # Simple ASCII art styles
+    styles = {
+        "standard": {
+            'A': [' ▄▄▄▄▄ ', '█     █', '███████', '█     █', '█     █'],
+            'B': ['██████ ', '█     █', '██████ ', '█     █', '██████ '],
+            'C': [' █████ ', '█     █', '█      ', '█     █', ' █████ '],
+            'D': ['██████ ', '█     █', '█     █', '█     █', '██████ '],
+            'E': ['███████', '█      ', '█████  ', '█      ', '███████'],
+            'F': ['███████', '█      ', '█████  ', '█      ', '█      '],
+            'G': [' █████ ', '█      ', '█   ███', '█     █', ' █████ '],
+            'H': ['█     █', '█     █', '███████', '█     █', '█     █'],
+            'I': ['███████', '   █   ', '   █   ', '   █   ', '███████'],
+            'J': ['███████', '     █ ', '     █ ', '█    █ ', ' ████  '],
+            'K': ['█    █ ', '█   █  ', '████   ', '█   █  ', '█    █ '],
+            'L': ['█      ', '█      ', '█      ', '█      ', '███████'],
+            'M': ['█     █', '██   ██', '█ █ █ █', '█  █  █', '█     █'],
+            'N': ['█     █', '██    █', '█ █   █', '█  █  █', '█   ███'],
+            'O': [' █████ ', '█     █', '█     █', '█     █', ' █████ '],
+            'P': ['██████ ', '█     █', '██████ ', '█      ', '█      '],
+            'Q': [' █████ ', '█     █', '█     █', '█   █ █', ' ████ █'],
+            'R': ['██████ ', '█     █', '██████ ', '█   █  ', '█    █ '],
+            'S': [' █████ ', '█      ', ' █████ ', '      █', '██████ '],
+            'T': ['███████', '   █   ', '   █   ', '   █   ', '   █   '],
+            'U': ['█     █', '█     █', '█     █', '█     █', ' █████ '],
+            'V': ['█     █', '█     █', '█     █', ' █   █ ', '  ███  '],
+            'W': ['█     █', '█     █', '█  █  █', '█ █ █ █', '██   ██'],
+            'X': ['█     █', ' █   █ ', '  ███  ', ' █   █ ', '█     █'],
+            'Y': ['█     █', ' █   █ ', '  ███  ', '   █   ', '   █   '],
+            'Z': ['███████', '    █  ', '   █   ', '  █    ', '███████'],
+            ' ': ['       ', '       ', '       ', '       ', '       '],
+            '!': ['   █   ', '   █   ', '   █   ', '       ', '   █   '],
+            '?': [' █████ ', '█     █', '    ██ ', '       ', '   █   '],
+            '.': ['       ', '       ', '       ', '       ', '   █   '],
+            ',': ['       ', '       ', '       ', '   █   ', '  █    '],
+            '0': [' █████ ', '█     █', '█     █', '█     █', ' █████ '],
+            '1': ['   █   ', '  ██   ', '   █   ', '   █   ', '███████'],
+            '2': [' █████ ', '█     █', '    ██ ', '  ██   ', '███████'],
+            '3': [' █████ ', '      █', '   ███ ', '      █', ' █████ '],
+            '4': ['█    █ ', '█    █ ', '███████', '     █ ', '     █ '],
+            '5': ['███████', '█      ', '██████ ', '      █', '██████ '],
+            '6': [' █████ ', '█      ', '██████ ', '█     █', ' █████ '],
+            '7': ['███████', '     █ ', '    █  ', '   █   ', '  █    '],
+            '8': [' █████ ', '█     █', ' █████ ', '█     █', ' █████ '],
+            '9': [' █████ ', '█     █', ' ██████', '      █', ' █████ '],
+            '-': ['       ', '       ', '███████', '       ', '       '],
+            '_': ['       ', '       ', '       ', '       ', '███████'],
+            '+': ['       ', '   █   ', ' █████ ', '   █   ', '       '],
+            '=': ['       ', ' █████ ', '       ', ' █████ ', '       '],
+            '*': ['       ', ' █ █ █ ', '  ███  ', ' █ █ █ ', '       '],
+            '/': ['      █', '     █ ', '    █  ', '   █   ', '  █    '],
+            '\\': ['█      ', ' █     ', '  █    ', '   █   ', '    █  '],
+            '(': ['    █  ', '   █   ', '   █   ', '   █   ', '    █  '],
+            ')': ['  █    ', '   █   ', '   █   ', '   █   ', '  █    '],
+            '[': ['  ████ ', '  █    ', '  █    ', '  █    ', '  ████ '],
+            ']': [' ████  ', '    █  ', '    █  ', '    █  ', ' ████  '],
+            '{': ['    ██ ', '   █   ', '  ██   ', '   █   ', '    ██ '],
+            '}': [' ██    ', '   █   ', '   ██  ', '   █   ', ' ██    '],
+            '|': ['   █   ', '   █   ', '   █   ', '   █   ', '   █   '],
+            ':': ['       ', '   █   ', '       ', '   █   ', '       '],
+            ';': ['       ', '   █   ', '       ', '   █   ', '  █    '],
+            '"': [' █   █ ', ' █   █ ', '       ', '       ', '       '],
+            "'": ['   █   ', '   █   ', '       ', '       ', '       '],
+            '`': ['   █   ', '    █  ', '       ', '       ', '       '],
+            '~': ['       ', '  █  █ ', ' █ █   ', '       ', '       '],
+            '^': ['   █   ', '  █ █  ', '       ', '       ', '       '],
+            '&': ['  ██   ', ' █  █  ', '  ██ █ ', ' █  █  ', '  ██ █ '],
+            '@': [' ████  ', '█    █ ', '█ ████ ', '█      ', ' ████  '],
+            '#': [' █   █ ', '███████', ' █   █ ', '███████', ' █   █ '],
+            '$': ['   █   ', ' █████ ', '█      ', ' █████ ', '   █   '],
+            '%': ['██   █ ', '██  █  ', '   █   ', '  █  ██', ' █   ██'],
+        }
+    }
+    
+    # Convert text to uppercase for ASCII art
+    text = text.upper()
+    
+    # Get the selected style or default to standard
+    style_dict = styles.get(style, styles["standard"])
+    
+    # Generate ASCII art lines
+    lines = ["", "", "", "", ""]
+    for char in text:
+        char_art = style_dict.get(char, style_dict[" "])
+        for i in range(5):
+            lines[i] += char_art[i]
+    
+    return lines
 
 class LyricGenerator:
     """Main class for the Automatic Lyrics Generator application."""
@@ -106,6 +207,7 @@ class LyricGenerator:
         features.add_row("• Play audio with synchronized lyrics display")
         features.add_row("• Support for various audio formats")
         features.add_row("• Save lyrics to JSON format")
+        features.add_row("• Super cool ASCII art lyrics display")
         console.print(features)
         console.print()
     
@@ -290,19 +392,39 @@ class LyricGenerator:
         
         # Set up main content with lyrics
         lyrics_text = Text()
-        layout["main"].update(Panel(lyrics_text, title="Lyrics", border_style="green"))
+        layout["main"].update(Panel(
+            Align.center(lyrics_text),
+            title="[bold green]SUPER KEREN LYRICS[/bold green]",
+            border_style="green"
+        ))
         
         # Function to play music
         def play_music():
-            try:
-                playsound(wav_path)
-            except Exception as e:
-                console.print(f"[bold red]Error playing audio:[/bold red] {str(e)}")
+            if PLAYSOUND_AVAILABLE:
+                try:
+                    playsound(wav_path)
+                except Exception as e:
+                    console.print(f"[bold red]Error playing audio:[/bold red] {str(e)}")
+            else:
+                # Simulate audio playback duration if playsound is not available
+                try:
+                    # Get audio duration using ffmpeg
+                    probe = ffmpeg.probe(wav_path)
+                    duration = float(probe['format']['duration'])
+                    console.print("[yellow]Audio playback not available. Simulating playback...[/yellow]")
+                    time.sleep(duration)
+                except Exception as e:
+                    console.print(f"[bold red]Error simulating audio playback:[/bold red] {str(e)}")
+                    # Default sleep if we can't determine duration
+                    time.sleep(60)
         
-        # Function to display lyrics
+        # Function to display lyrics with ASCII art
         def display_lyrics():
             start_time = time.time()
             current_index = 0
+            current_word = ""
+            buffer_words = []
+            last_update_time = 0
             
             while current_index < len(lyrics):
                 now = time.time()
@@ -311,13 +433,60 @@ class LyricGenerator:
                 # Display words that should be shown by now
                 while current_index < len(lyrics) and lyrics[current_index]["start"] <= elapsed:
                     word = lyrics[current_index]["word"]
-                    lyrics_text.append(word + " ", style="bold white")
-                    
-                    # Keep only the last few lines visible
-                    if len(lyrics_text.plain) > 500:
-                        lyrics_text.plain = lyrics_text.plain[-500:]
-                    
+                    buffer_words.append(word)
                     current_index += 1
+                    
+                    # Update display every few words or when punctuation is encountered
+                    if len(buffer_words) >= 3 or any(p in word for p in ".,!?;:"):
+                        current_word = " ".join(buffer_words)
+                        buffer_words = []
+                        
+                        # Generate ASCII art for the current word
+                        ascii_art = generate_ascii_art(current_word)
+                        
+                        # Clear previous content and add new ASCII art
+                        lyrics_text.plain = ""
+                        
+                        # Add "SUPER KEREN" ASCII art header
+                        super_keren = generate_ascii_art("SUPER KEREN")
+                        for line in super_keren:
+                            lyrics_text.append(line + "\n", style="bold magenta")
+                        
+                        lyrics_text.append("\n", style="bold white")
+                        
+                        # Add the current word ASCII art
+                        for line in ascii_art:
+                            lyrics_text.append(line + "\n", style="bold cyan")
+                        
+                        # Add the plain text version below
+                        lyrics_text.append("\n" + current_word + "\n", style="bold green")
+                
+                # If we have buffered words but haven't updated in a while, update now
+                if buffer_words and now - last_update_time > 1.0:
+                    current_word = " ".join(buffer_words)
+                    buffer_words = []
+                    
+                    # Generate ASCII art for the current word
+                    ascii_art = generate_ascii_art(current_word)
+                    
+                    # Clear previous content and add new ASCII art
+                    lyrics_text.plain = ""
+                    
+                    # Add "SUPER KEREN" ASCII art header
+                    super_keren = generate_ascii_art("SUPER KEREN")
+                    for line in super_keren:
+                        lyrics_text.append(line + "\n", style="bold magenta")
+                    
+                    lyrics_text.append("\n", style="bold white")
+                    
+                    # Add the current word ASCII art
+                    for line in ascii_art:
+                        lyrics_text.append(line + "\n", style="bold cyan")
+                    
+                    # Add the plain text version below
+                    lyrics_text.append("\n" + current_word + "\n", style="bold green")
+                    
+                    last_update_time = now
                 
                 time.sleep(0.05)  # Small sleep to prevent CPU hogging
         
@@ -327,6 +496,10 @@ class LyricGenerator:
         
         console.print("[bold green]Starting playback with lyrics...[/bold green]")
         console.print("[italic](Press Ctrl+C to stop)[/italic]")
+        
+        # Display audio playback status
+        if not PLAYSOUND_AVAILABLE:
+            console.print("[yellow]Audio playback is disabled. Running in lyrics-only mode.[/yellow]")
         
         try:
             with Live(layout, refresh_per_second=10):
@@ -379,12 +552,19 @@ def parse_arguments():
     parser.add_argument("-p", "--play", action="store_true", help="Play audio with lyrics")
     parser.add_argument("-l", "--list", action="store_true", help="List available audio files")
     parser.add_argument("-d", "--directory", help="Base directory for the application")
+    parser.add_argument("--no-audio", action="store_true", help="Run in lyrics-only mode without audio playback")
     return parser.parse_args()
 
 
 def main():
     """Main entry point for the application."""
     args = parse_arguments()
+    
+    # Check if no-audio flag is set
+    global PLAYSOUND_AVAILABLE
+    if args.no_audio:
+        PLAYSOUND_AVAILABLE = False
+        console.print("[yellow]Running in lyrics-only mode (--no-audio flag set)[/yellow]")
     
     # Initialize the application
     app = LyricGenerator(args.directory)
