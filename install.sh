@@ -86,14 +86,20 @@ install_system_dependencies() {
         debian)
             echo -e "${YELLOW}Installing additional dependencies...${NC}"
             sudo apt-get install -y python3-dev python3-pip python3-venv portaudio19-dev
+            # Install dependencies for playsound
+            sudo apt-get install -y python3-gi python3-gst-1.0
             ;;
         fedora|redhat)
             echo -e "${YELLOW}Installing additional dependencies...${NC}"
             sudo dnf install -y python3-devel python3-pip python3-virtualenv portaudio-devel
+            # Install dependencies for playsound
+            sudo dnf install -y python3-gobject gstreamer1-plugins-base
             ;;
         arch)
             echo -e "${YELLOW}Installing additional dependencies...${NC}"
             sudo pacman -S --noconfirm python-pip python-virtualenv portaudio
+            # Install dependencies for playsound
+            sudo pacman -S --noconfirm python-gobject gst-plugins-base
             ;;
         macos)
             echo -e "${YELLOW}Installing additional dependencies...${NC}"
@@ -291,10 +297,51 @@ pip install openai-whisper --no-cache-dir || {
     echo -e "${RED}Failed to install whisper. Continuing anyway...${NC}"
 }
 
-# Install playsound
+# Try different playsound versions
 echo -e "${YELLOW}Installing playsound...${NC}"
-pip install playsound --no-cache-dir || {
-    echo -e "${RED}Failed to install playsound. Continuing anyway...${NC}"
+pip install playsound==1.2.2 --no-cache-dir || {
+    echo -e "${YELLOW}Trying alternative playsound version...${NC}"
+    pip install playsound==1.3.0 --no-cache-dir || {
+        echo -e "${YELLOW}Trying PyObjC for macOS...${NC}"
+        pip install PyObjC --no-cache-dir || {
+            echo -e "${YELLOW}Trying simpleaudio as an alternative...${NC}"
+            pip install simpleaudio --no-cache-dir || {
+                echo -e "${RED}Failed to install audio playback library. Audio playback may not work.${NC}"
+                
+                # Create a fallback playsound module
+                mkdir -p "$SCRIPT_DIR/src/fallback"
+                cat > "$SCRIPT_DIR/src/fallback/__init__.py" << EOF
+# Fallback playsound module
+def playsound(sound_file, block=True):
+    """
+    Fallback playsound function that uses ffplay from ffmpeg
+    """
+    import subprocess
+    import os
+    
+    if not os.path.exists(sound_file):
+        raise FileNotFoundError(f"Sound file not found: {sound_file}")
+    
+    try:
+        # Use ffplay from ffmpeg to play the sound
+        cmd = ["ffplay", "-nodisp", "-autoexit", "-hide_banner", "-loglevel", "quiet", sound_file]
+        if block:
+            subprocess.call(cmd)
+        else:
+            subprocess.Popen(cmd)
+        return True
+    except Exception as e:
+        print(f"Error playing sound: {e}")
+        return False
+EOF
+
+                # Update main.py to use fallback if needed
+                sed -i 's/from playsound import playsound/try:\n    from playsound import playsound\nexcept ImportError:\n    from fallback import playsound/' "$SCRIPT_DIR/src/main.py" || {
+                    echo -e "${RED}Failed to update main.py with fallback playsound. Audio playback may not work.${NC}"
+                }
+            }
+        }
+    }
 }
 
 # Make the main script executable

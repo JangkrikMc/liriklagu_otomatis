@@ -14,9 +14,20 @@ import argparse
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 
+# Try to import required packages with fallbacks
 try:
     import whisper
+except ImportError:
+    print("Whisper is not installed. Please run the install.sh script first.")
+    sys.exit(1)
+
+try:
     import ffmpeg
+except ImportError:
+    print("ffmpeg-python is not installed. Please run the install.sh script first.")
+    sys.exit(1)
+
+try:
     from rich.console import Console
     from rich.panel import Panel
     from rich.prompt import Prompt, Confirm
@@ -25,10 +36,25 @@ try:
     from rich.text import Text
     from rich.layout import Layout
     from rich.live import Live
+except ImportError:
+    print("Rich is not installed. Please run the install.sh script first.")
+    sys.exit(1)
+
+try:
     from playsound import playsound
+except ImportError:
+    try:
+        # Try to use our fallback module
+        from fallback import playsound
+        print("Using fallback playsound module with ffplay")
+    except ImportError:
+        print("Audio playback libraries are not installed. Please run the install.sh script first.")
+        sys.exit(1)
+
+try:
     from pydub import AudioSegment
 except ImportError:
-    print("Required packages are not installed. Please run the install.sh script first.")
+    print("Pydub is not installed. Please run the install.sh script first.")
     sys.exit(1)
 
 # Initialize Rich console
@@ -268,7 +294,10 @@ class LyricGenerator:
         
         # Function to play music
         def play_music():
-            playsound(wav_path)
+            try:
+                playsound(wav_path)
+            except Exception as e:
+                console.print(f"[bold red]Error playing audio:[/bold red] {str(e)}")
         
         # Function to display lyrics
         def display_lyrics():

@@ -9,7 +9,7 @@ with open("requirements.txt", "r", encoding="utf-8") as f:
 setup(
     name="liriklagu-otomatis",
     version="1.0.0",
-    author="RenzMc",
+    author="Your Name",
     author_email="renzaja11@gmail.com",
     description="A tool to automatically generate and display lyrics from audio files in real-time",
     long_description=long_description,
