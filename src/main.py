@@ -193,6 +193,13 @@ class LyricGenerator:
     
     def display_welcome(self) -> None:
         """Display welcome message and application info."""
+        # Generate ASCII art for the title
+        title_art = generate_ascii_art("LYRICS GENERATOR")
+        
+        # Display the ASCII art title
+        for line in title_art:
+            console.print(f"[bold blue]{line}[/bold blue]")
+        
         console.print(Panel.fit(
             "[bold blue]Automatic Lyrics Generator[/bold blue]\n"
             "[italic]Generate and display lyrics from audio files in real-time[/italic]",
@@ -207,13 +214,18 @@ class LyricGenerator:
         features.add_row("• Play audio with synchronized lyrics display")
         features.add_row("• Support for various audio formats")
         features.add_row("• Save lyrics to JSON format")
-        features.add_row("• Super cool ASCII art lyrics display")
+        features.add_row("• Cool ASCII art lyrics display")
         console.print(features)
         console.print()
     
     def show_main_menu(self) -> str:
         """Display the main menu and return the selected option."""
-        console.print("[bold]Main Menu[/bold]", style="blue")
+        # Generate ASCII art for the menu title
+        menu_art = generate_ascii_art("MAIN MENU")
+        
+        # Display the ASCII art menu title
+        for line in menu_art:
+            console.print(f"[bold cyan]{line}[/bold cyan]")
         
         options = [
             "Convert audio to lyrics",
@@ -241,6 +253,13 @@ class LyricGenerator:
         """Display a table of available audio files."""
         audio_files = self.list_audio_files()
         
+        # Generate ASCII art for the title
+        files_art = generate_ascii_art("AUDIO FILES")
+        
+        # Display the ASCII art title
+        for line in files_art:
+            console.print(f"[bold green]{line}[/bold green]")
+        
         if not audio_files:
             console.print("[yellow]No audio files found in the audio directory.[/yellow]")
             console.print(f"Please add audio files to the [bold]{self.audio_dir}[/bold] directory.")
@@ -262,6 +281,13 @@ class LyricGenerator:
     def select_audio_file(self) -> Optional[str]:
         """Let the user select an audio file."""
         audio_files = self.list_audio_files()
+        
+        # Generate ASCII art for the title
+        select_art = generate_ascii_art("SELECT FILE")
+        
+        # Display the ASCII art title
+        for line in select_art:
+            console.print(f"[bold magenta]{line}[/bold magenta]")
         
         if not audio_files:
             console.print("[yellow]No audio files found in the audio directory.[/yellow]")
@@ -325,12 +351,17 @@ class LyricGenerator:
                 # Transcribe audio
                 result = self.model.transcribe(wav_path, word_timestamps=True)
                 
-                # Process results
+                # Process results and convert to ASCII art
                 output = []
                 for segment in result["segments"]:
                     for word in segment["words"]:
+                        # Generate ASCII art for each word
+                        ascii_art = generate_ascii_art(word["word"].strip())
+                        ascii_text = "\n".join(ascii_art)
+                        
                         output.append({
                             "word": word["word"].strip(),
+                            "ascii_art": ascii_text,
                             "start": word["start"],
                             "end": word["end"]
                         })
@@ -394,7 +425,7 @@ class LyricGenerator:
         lyrics_text = Text()
         layout["main"].update(Panel(
             Align.center(lyrics_text),
-            title="[bold green]SUPER KEREN LYRICS[/bold green]",
+            title="[bold green]LYRICS[/bold green]",
             border_style="green"
         ))
         
@@ -433,60 +464,24 @@ class LyricGenerator:
                 # Display words that should be shown by now
                 while current_index < len(lyrics) and lyrics[current_index]["start"] <= elapsed:
                     word = lyrics[current_index]["word"]
-                    buffer_words.append(word)
-                    current_index += 1
+                    ascii_art = lyrics[current_index].get("ascii_art", "")
                     
-                    # Update display every few words or when punctuation is encountered
-                    if len(buffer_words) >= 3 or any(p in word for p in ".,!?;:"):
-                        current_word = " ".join(buffer_words)
-                        buffer_words = []
-                        
-                        # Generate ASCII art for the current word
-                        ascii_art = generate_ascii_art(current_word)
-                        
-                        # Clear previous content and add new ASCII art
-                        lyrics_text.plain = ""
-                        
-                        # Add "SUPER KEREN" ASCII art header
-                        super_keren = generate_ascii_art("SUPER KEREN")
-                        for line in super_keren:
-                            lyrics_text.append(line + "\n", style="bold magenta")
-                        
-                        lyrics_text.append("\n", style="bold white")
-                        
-                        # Add the current word ASCII art
-                        for line in ascii_art:
-                            lyrics_text.append(line + "\n", style="bold cyan")
-                        
-                        # Add the plain text version below
-                        lyrics_text.append("\n" + current_word + "\n", style="bold green")
-                
-                # If we have buffered words but haven't updated in a while, update now
-                if buffer_words and now - last_update_time > 1.0:
-                    current_word = " ".join(buffer_words)
-                    buffer_words = []
+                    # If ASCII art is not in the JSON, generate it now
+                    if not ascii_art:
+                        ascii_lines = generate_ascii_art(word)
+                        ascii_art = "\n".join(ascii_lines)
                     
-                    # Generate ASCII art for the current word
-                    ascii_art = generate_ascii_art(current_word)
-                    
-                    # Clear previous content and add new ASCII art
+                    # Clear previous content
                     lyrics_text.plain = ""
                     
-                    # Add "SUPER KEREN" ASCII art header
-                    super_keren = generate_ascii_art("SUPER KEREN")
-                    for line in super_keren:
-                        lyrics_text.append(line + "\n", style="bold magenta")
-                    
-                    lyrics_text.append("\n", style="bold white")
-                    
-                    # Add the current word ASCII art
-                    for line in ascii_art:
-                        lyrics_text.append(line + "\n", style="bold cyan")
+                    # Display the ASCII art
+                    lyrics_text.append(ascii_art + "\n", style="bold cyan")
                     
                     # Add the plain text version below
-                    lyrics_text.append("\n" + current_word + "\n", style="bold green")
+                    lyrics_text.append("\n" + word + "\n", style="bold green")
                     
-                    last_update_time = now
+                    current_index += 1
+                    time.sleep(0.1)  # Small pause between words
                 
                 time.sleep(0.05)  # Small sleep to prevent CPU hogging
         
